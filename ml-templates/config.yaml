@@ -1,0 +1,115 @@
+kind: MLApp
+metadata:
+  name: tensorflow
+spec:
+  package_manager: "pip3"
+  packages:
+    - names:
+      {{- range $i, $value := .packages }}
+      - "{{ $value }}"
+      {{- end }}
+      manager: "pip3"
+  tasks:
+  - name: train
+    resources:
+    - name: worker
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      allowFail: true
+      images:
+        gpu: "kuberlab/pyspark:cpu-27-full"
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      command: >-
+        export PYTHONPATH=$PYTHONPATH:$SRC_DIR;
+        python blur_videofile.py
+        --models-dir $DATA_DIR -f examples/hamilton_clip.mp4
+        -O $TRAINING_DIR/output.mp4
+        --train-dir $TRAINING_DIR/$BUILD_ID
+      workdir: "$SRC_DIR"
+      resources:
+        accelerators:
+          gpu: 1
+        requests:
+          cpu: 100m
+          memory: 2Gi
+        limits:
+          cpu: 2000m
+          memory: 16Gi
+      default_volume_mapping: true
+  - name: evaluate
+    resources:
+    - name: worker
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      allowFail: true
+      images:
+        gpu: "kuberlab/pyspark:cpu-27-full"
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      command: >-
+        export PYTHONPATH=$PYTHONPATH:$SRC_DIR;
+        python blur_videofile.py
+        --models-dir $DATA_DIR -f examples/hamilton_clip.mp4
+        -O $TRAINING_DIR/output.mp4
+        --train-dir $TRAINING_DIR/$BUILD_ID
+      workdir: "$SRC_DIR"
+      resources:
+        accelerators:
+          gpu: 1
+        requests:
+          cpu: 100m
+          memory: 2Gi
+        limits:
+          cpu: 2000m
+          memory: 16Gi
+      default_volume_mapping: true
+
+  uix:
+  - name: jupyter
+    displayName: Jupyter
+    images:
+      gpu: "kuberlab/pyspark:cpu-27-full"
+      cpu: "kuberlab/pyspark:cpu-27-full"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+    ports:
+    - port: 8888
+      targetPort: 8888
+      protocol: TCP
+      name: http
+    default_volume_mapping: true
+  volumes:
+  - isLibDir: false
+    mountPath: /notebooks/training
+    name: training
+    clusterStorage: {{ .storage.value }}
+    subPath: training
+  - gitRepo:
+      repository: https://github.com/kuberlab-catalog/pyspark-mnist
+    isLibDir: false
+    mountPath: /notebooks/src
+    name: src
+    subPath: pyspark-mnist/src
+  - isLibDir: true
+    mountPath: /notebooks/lib
+    name: lib
+    clusterStorage: {{ .storage.value }}
+    subPath: lib
+  - isLibDir: false
+    mountPath: /notebooks
+    name: code
+    subPath: code
+    clusterStorage: {{ .storage.value }}
+  - isLibDir: false
+    mountPath: /notebooks/data
+    name: data
+    datasetFS:
+      workspace: {{ .dataset.workspace }}
+      dataset: {{ .dataset.value }}
+      version: {{ .dataset.version }}
