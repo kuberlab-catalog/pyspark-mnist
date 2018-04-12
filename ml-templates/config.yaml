@@ -21,7 +21,7 @@ spec:
         gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
       command: >-
-        python train.py --master {{ .sparkMaster }}
+        python train.py --master {{ .sparkMaster }} --data-dir $DATA_DIR
         --executor-cores 4 --batch-size 20
         --output-dir $TRAINING_DIR/$BUILD_ID
       workdir: "$SRC_DIR"
