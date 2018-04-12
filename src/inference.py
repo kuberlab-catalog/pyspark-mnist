@@ -66,6 +66,7 @@ def main():
     LOG.info('initialize with spark conf:')
     LOG.info(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
+    sc.setLogLevel('INFO')
     common.init_engine()
 
     model = layer.Model.loadModel(
