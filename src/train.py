@@ -1,7 +1,6 @@
 import argparse
-import json
+import logging
 import os
-from os import path
 
 from bigdl.dataset import mnist
 from bigdl.dataset import transformer
@@ -10,6 +9,14 @@ from bigdl.nn import layer
 from bigdl.optim import optimizer
 from bigdl.util import common
 import pyspark
+
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-10s %(name)-25s [-] %(message)s',
+    level='INFO'
+)
+logging.root.setLevel(logging.INFO)
+LOG = logging.getLogger('train')
 
 
 def get_parser():
@@ -34,10 +41,11 @@ def get_parser():
     )
     parser.add_argument(
         '--output-dir',
-        default=path.join(
-            os.environ.get('TRAINING_DIR'),
-            os.environ.get('BUILD_ID')
-        ),
+        help='Trained model output dir.'
+    )
+    parser.add_argument(
+        '--data-dir',
+        default=os.environ.get('DATA_DIR'),
         help='Trained model output dir.'
     )
     return parser
@@ -96,19 +104,19 @@ def main():
     batch_size = args.batch_size
     conf = (
         common.create_spark_conf()
-        .setAppName('svm-spark-test')
+        .setAppName('pyspark-mnist')
         .setMaster(args.master)
     )
     conf = conf.set('spark.executor.cores', cores)
     conf = conf.set('spark.cores.max', cores)
 
-    print('initialize with spark conf:')
-    print(json.dumps(conf.getAll(), indent=4))
+    LOG.info('initialize with spark conf:')
+    print(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
     common.init_engine()
 
     train_data = (
-        get_mnist(sc, "train")
+        get_mnist(sc, "train", location=args.data_dir)
         .map(lambda rec_tuple: (
             transformer.normalizer(
                 rec_tuple[0], mnist.TRAIN_MEAN, mnist.TRAIN_STD
@@ -118,7 +126,7 @@ def main():
         .map(lambda t: common.Sample.from_ndarray(t[0], t[1]))
     )
     test_data = (
-        get_mnist(sc, "test")
+        get_mnist(sc, "test", location=args.data_dir)
         .map(lambda rec_tuple: (
             transformer.normalizer(
                 rec_tuple[0], mnist.TEST_MEAN, mnist.TEST_STD
@@ -127,14 +135,9 @@ def main():
         )
         .map(lambda t: common.Sample.from_ndarray(t[0], t[1]))
     )
-    # test_data = get_mnist(sc, "test") \
-    #     .map(lambda rec_tuple: (
-    # transformer.normalizer(rec_tuple[0], mnist.TEST_MEAN, mnist.TEST_STD),
-    #                             rec_tuple[1])) \
-    #     .map(lambda t: common.Sample.from_ndarray(t[0], t[1]))
 
-    print(train_data.count())
-    print(test_data.count())
+    LOG.info(train_data.count())
+    LOG.info(test_data.count())
 
     opt = optimizer.Optimizer(
         model=build_model(10),
@@ -153,24 +156,22 @@ def main():
         val_method=[optimizer.Top1Accuracy()]
     )
     trained_model = opt.optimize()
-    parameters = trained_model.parameters()
-    print("training finished")
-    print("parameters: %s" % parameters)
+    LOG.info("training finished")
 
     results = trained_model.evaluate(
-        test_data, batch_size, [optimizer.Top1Accuracy()]
+        test_data, batch_size * 2, [optimizer.Top1Accuracy()]
     )
     for result in results:
-        print(result)
+        LOG.info(result)
 
-    print('saving model...')
+    LOG.info('saving model...')
     path = args.output_dir
     trained_model.saveModel(
         path + '/model.pb',
         path + '/model.bin',
         over_write=True
     )
-    print('successfully saved!')
+    LOG.info('successfully saved!')
 
     sc.stop()
 

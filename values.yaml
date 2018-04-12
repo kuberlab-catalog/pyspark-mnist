@@ -12,7 +12,7 @@ dataset:
    name: "Mnist dataset configuration"
    kind: dataset
 
-spark_master: spark://spark-master.spark:7077
+sparkMaster: spark://spark-master.spark:7077
 
 packages:
  - "git+https://github.com/kuberlab/python-mlboardclient.git"

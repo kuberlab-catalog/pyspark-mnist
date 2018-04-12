@@ -2,13 +2,13 @@ kind: MLApp
 metadata:
   name: tensorflow
 spec:
-  package_manager: "pip3"
+  package_manager: "pip2"
   packages:
     - names:
       {{- range $i, $value := .packages }}
       - "{{ $value }}"
       {{- end }}
-      manager: "pip3"
+      manager: "pip2"
   tasks:
   - name: train
     resources:
@@ -21,21 +21,19 @@ spec:
         gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
       command: >-
-        export PYTHONPATH=$PYTHONPATH:$SRC_DIR;
-        python blur_videofile.py
-        --models-dir $DATA_DIR -f examples/hamilton_clip.mp4
-        -O $TRAINING_DIR/output.mp4
-        --train-dir $TRAINING_DIR/$BUILD_ID
+        python train.py --master {{ .sparkMaster }}
+        --executor-cores 4 --batch-size 20
+        --output-dir $TRAINING_DIR/$BUILD_ID
       workdir: "$SRC_DIR"
       resources:
         accelerators:
-          gpu: 1
+          gpu: 0
         requests:
           cpu: 100m
-          memory: 2Gi
+          memory: 512M
         limits:
-          cpu: 2000m
-          memory: 16Gi
+          cpu: 1000m
+          memory: 2Gi
       default_volume_mapping: true
   - name: evaluate
     resources:
@@ -48,21 +46,17 @@ spec:
         gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
       command: >-
-        export PYTHONPATH=$PYTHONPATH:$SRC_DIR;
-        python blur_videofile.py
-        --models-dir $DATA_DIR -f examples/hamilton_clip.mp4
-        -O $TRAINING_DIR/output.mp4
-        --train-dir $TRAINING_DIR/$BUILD_ID
+        python evaluate.py --model-dir $TRAINING_DIR/1 --input examples --executor-cores 4 --master {{ .sparkMaster }}
       workdir: "$SRC_DIR"
       resources:
         accelerators:
-          gpu: 1
+          gpu: 0
         requests:
           cpu: 100m
-          memory: 2Gi
+          memory: 512M
         limits:
-          cpu: 2000m
-          memory: 16Gi
+          cpu: 1000m
+          memory: 2Gi
       default_volume_mapping: true
 
   uix:
