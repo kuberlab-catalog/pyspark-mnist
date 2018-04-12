@@ -48,6 +48,12 @@ def get_parser():
         default=os.environ.get('DATA_DIR'),
         help='Trained model output dir.'
     )
+    parser.add_argument(
+        '--epoch',
+        default=10,
+        type=int,
+        help='How many epoch to train.'
+    )
     return parser
 
 
@@ -85,8 +91,8 @@ def get_mnist(sc, data_type="train", location=os.environ.get('DATA_DIR')):
     return record
 
 
-def get_end_trigger():
-    return optimizer.MaxEpoch(10)
+def get_end_trigger(max_epoch):
+    return optimizer.MaxEpoch(max_epoch)
 
 
 def main():
@@ -113,7 +119,6 @@ def main():
     LOG.info('initialize with spark conf:')
     LOG.info(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
-    sc.setLogLevel('INFO')
     common.init_engine()
 
     train_data = (
@@ -147,7 +152,7 @@ def main():
         optim_method=optimizer.SGD(
             learningrate=0.01, learningrate_decay=0.0002
         ),
-        end_trigger=get_end_trigger(),
+        end_trigger=get_end_trigger(args.epoch),
         batch_size=batch_size
     )
     opt.set_validation(
