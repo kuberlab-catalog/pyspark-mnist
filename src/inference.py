@@ -72,6 +72,7 @@ def main():
         args.model_dir + "/model.pb",
         args.model_dir + "/model.bin"
     )
+    sc.addFile(args.input, recursive=True)
     images = sc.binaryFiles(args.input)
     # Load raw data into numpy arrays
     images = images.mapValues(load_input)
