@@ -35,7 +35,7 @@ spec:
           cpu: 1000m
           memory: 2Gi
       default_volume_mapping: true
-  - name: evaluate
+  - name: inference
     resources:
     - name: worker
       replicas: 1
@@ -46,7 +46,7 @@ spec:
         gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
       command: >-
-        python evaluate.py --model-dir $TRAINING_DIR/1 --input examples --executor-cores 4 --master {{ .sparkMaster }}
+        python inference.py --model-dir $TRAINING_DIR/1 --input examples --executor-cores 4 --master {{ .sparkMaster }}
       workdir: "$SRC_DIR"
       resources:
         accelerators:
