@@ -1,5 +1,7 @@
 import argparse
 import logging
+import os
+from os import path
 
 from bigdl.nn import layer
 from bigdl.util import common
@@ -72,7 +74,15 @@ def main():
         args.model_dir + "/model.pb",
         args.model_dir + "/model.bin"
     )
-    sc.addFile(args.input, recursive=True)
+
+    if path.isdir(args.input):
+        files = [path.join(args.input, f) for f in os.listdir(args.input)]
+    else:
+        files = [args.input]
+
+    for f in files:
+        sc.addFile(f)
+
     images = sc.binaryFiles(args.input)
     # Load raw data into numpy arrays
     images = images.mapValues(load_input)
