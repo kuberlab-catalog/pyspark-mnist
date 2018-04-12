@@ -45,6 +45,16 @@ def get_parser():
     return parser
 
 
+def load(spark_files):
+    data = []
+    for f in spark_files:
+        with open(pyspark.SparkFiles.get(path.basename(f))) as file:
+            # Add tuples (path, data)
+            data.append((path.basename(f), load_input(file.read())))
+
+    return data
+
+
 def load_input(data):
     image = Image.open(StringIO(data))
     im_width, im_height = image.size
@@ -68,6 +78,7 @@ def main():
     LOG.info('initialize with spark conf:')
     LOG.info(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
+    # sc.setLogLevel('INFO')
     common.init_engine()
 
     model = layer.Model.loadModel(
@@ -81,11 +92,11 @@ def main():
         files = [args.input]
 
     for f in files:
+        # Add all files to spark
         sc.addFile(f)
 
-    images = sc.binaryFiles(args.input)
     # Load raw data into numpy arrays
-    images = images.mapValues(load_input)
+    images = sc.parallelize(files).mapPartitions(load)
 
     LOG.info('image count: %s' % images.count())
 
