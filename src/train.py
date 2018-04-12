@@ -111,7 +111,7 @@ def main():
     conf = conf.set('spark.cores.max', cores)
 
     LOG.info('initialize with spark conf:')
-    print(conf.getAll())
+    LOG.info(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
     common.init_engine()
 

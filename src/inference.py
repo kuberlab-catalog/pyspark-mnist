@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 from bigdl.nn import layer
 from bigdl.util import common
@@ -7,6 +8,14 @@ from PIL import Image
 import pyspark
 
 from six.moves import StringIO
+
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-10s %(name)-25s [-] %(message)s',
+    level='INFO'
+)
+logging.root.setLevel(logging.INFO)
+LOG = logging.getLogger('train')
 
 
 def get_parser():
@@ -54,8 +63,8 @@ def main():
     conf = conf.set('spark.executor.cores', cores)
     conf = conf.set('spark.cores.max', cores)
 
-    print('initialize with spark conf:')
-    print(conf.getAll())
+    LOG.info('initialize with spark conf:')
+    LOG.info(conf.getAll())
     sc = pyspark.SparkContext(conf=conf)
     common.init_engine()
 
@@ -67,7 +76,7 @@ def main():
     # Load raw data into numpy arrays
     images = images.mapValues(load_input)
 
-    print('image count: %s' % images.count())
+    LOG.info('image count: %s' % images.count())
 
     # TODO: how to do something like
     # result = model.predict(images.values())
@@ -76,7 +85,7 @@ def main():
 
     for filename, image_data in images.collect():
         predict_result = model.predict(image_data)
-        print('%s: %s' % (filename, predict_result[0].argmax()))
+        LOG.info('%s: %s' % (filename, predict_result[0].argmax()))
 
     sc.stop()
 
