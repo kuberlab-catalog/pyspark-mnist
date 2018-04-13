@@ -78,6 +78,9 @@ spec:
       protocol: TCP
       name: http
     default_volume_mapping: true
+    env:
+    - name: SPARK_MASTER
+      value: {{ .sparkMaster }}
   volumes:
   - isLibDir: false
     mountPath: /notebooks/training
