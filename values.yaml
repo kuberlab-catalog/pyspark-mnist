@@ -12,8 +12,19 @@ dataset:
    name: "Mnist dataset configuration"
    kind: dataset
 
-sparkMaster: local[*]
-#sparkMaster: spark://spark-master.spark:7077
+src:
+  value: https://github.com/kuberlab/spark-bigdl-examples
+  wizard:
+    name: "Source Code"
+    kind: git
 
-packages:
- - "git+https://github.com/kuberlab/python-mlboardclient.git"
+spark_master: ""
+
+spark_type:
+  value: "cluster"
+  wizard:
+    name: "Local or Cluster spark mode"
+    kind: select
+    options:
+    - "cluster"
+    - "local"
