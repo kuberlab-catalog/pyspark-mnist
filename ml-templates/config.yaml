@@ -1,6 +1,6 @@
 kind: MLApp
 metadata:
-  name: tensorflow
+  name: pyspark-mnist
 spec:
   package_manager: "pip2"
   packages:
@@ -12,18 +12,13 @@ spec:
   tasks:
   - name: train
     resources:
-    - name: worker
+    - name: job
       replicas: 1
       restartPolicy: Never
       maxRestartCount: 0
-      allowFail: true
       images:
-        gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
-      command: >-
-        python train.py --master {{ .sparkMaster }} --data-dir $DATA_DIR
-        --executor-cores 4 --batch-size 20
-        --output-dir $TRAINING_DIR/$BUILD_ID
+      command: "python bigdl-mnist-trian.py --master $SPARK-MASTER --executor-cores 4 --batch-size 20"
       workdir: "$SRC_DIR"
       resources:
         accelerators:
@@ -34,19 +29,53 @@ spec:
         limits:
           cpu: 1000m
           memory: 2Gi
+      env:
+      {{- if .spark_master }}
+      - name: SPARK_MASTER
+        value: {{ .spark_master }}
+      {{- else if eq .spark_type.value "cluster" }}
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      {{- else }}
+      - name: SPARK_MASTER
+        value: "local[*]"
+      {{- end }}
       default_volume_mapping: true
+    {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
+    - name: worker
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      is_permanent: true
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 8000m
+          memory: 8Gi
+      env:
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      volumes:
+      - name: lib
+      - name: training
+      - name: data
+    {{- end }}
   - name: inference
     resources:
-    - name: worker
+    - name: job
       replicas: 1
       restartPolicy: Never
       maxRestartCount: 0
-      allowFail: true
       images:
-        gpu: "kuberlab/pyspark:cpu-27-full"
         cpu: "kuberlab/pyspark:cpu-27-full"
-      command: >-
-        python inference.py --model-dir $TRAINING_DIR/1 --input examples --executor-cores 4 --master {{ .sparkMaster }}
+      command: "python bigdl-inference-mnist.py --model-dir $TRAINING_DIR/1"
       workdir: "$SRC_DIR"
       resources:
         accelerators:
@@ -57,13 +86,75 @@ spec:
         limits:
           cpu: 1000m
           memory: 2Gi
+      env:
+      {{- if .spark_master }}
+      - name: SPARK_MASTER
+        value: {{ .spark_master }}
+      {{- else if eq .spark_type.value "cluster" }}
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      {{- else }}
+      - name: SPARK_MASTER
+        value: "local[*]"
+      {{- end }}
       default_volume_mapping: true
-
+    {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
+    - name: worker
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      is_permanent: true
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 8000m
+          memory: 8Gi
+      env:
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      volumes:
+      - name: lib
+      - name: training
+      - name: data
+    {{- end }}
+  {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
+  - name: spark-workers
+    resources:
+    - name: workers
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
+      env:
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 8000m
+          memory: 8Gi
+      volumes:
+      - name: lib
+      - name: training
+      - name: data
+  {{- end }}
   uix:
   - name: jupyter
     displayName: Jupyter
     images:
-      gpu: "kuberlab/pyspark:cpu-27-full"
       cpu: "kuberlab/pyspark:cpu-27-full"
     resources:
       requests:
@@ -79,8 +170,43 @@ spec:
       name: http
     default_volume_mapping: true
     env:
+    {{- if .spark_master }}
     - name: SPARK_MASTER
-      value: {{ .sparkMaster }}
+      value: {{ .spark_master }}
+    {{- else if eq .spark_type.value "cluster" }}
+    - name: SPARK_MASTER
+      value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+    {{- else }}
+    - name: SPARK_MASTER
+      value: "local[*]"
+    {{- end }}
+  {{- if eq .spark_type.value "cluster" }}
+  - name: spark
+    displayName: Spark
+    command: "echo $(hostname -i) $PROJECT_NAME-spark >> /etc/hosts  && spark-class -Dspark.ui.proxyBase=/../../../../../../../$URL_PREFIX org.apache.spark.deploy.master.Master --port 7077 --webui-port 8080 --host $PROJECT_NAME-spark"
+    images:
+      cpu: "kuberlab/pyspark:cpu-27-full"
+    ports:
+    - port: 7077
+      targetPort: 7077
+      protocol: TCP
+      name: service
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: web
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    volumes:
+    - name: lib
+    - name: training
+    - name: data
+  {{- end }}
   volumes:
   - isLibDir: false
     mountPath: /notebooks/training
@@ -88,11 +214,11 @@ spec:
     clusterStorage: {{ .storage.value }}
     subPath: training
   - gitRepo:
-      repository: https://github.com/kuberlab-catalog/pyspark-mnist
+      repository: {{ gitRepo .src.value }}
     isLibDir: false
     mountPath: /notebooks/src
     name: src
-    subPath: pyspark-mnist/src
+    subPath: {{ gitSubPath .src.value }}
   - isLibDir: true
     mountPath: /notebooks/lib
     name: lib

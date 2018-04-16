@@ -3,10 +3,9 @@ Engine: gotpl
 Home: http://kuberlab.com
 Icon: https://www.onlinebooksreview.com/uploads/blog_images/2017/11/27_file.png
 Keywords:
-- kubernetes
-- tensorflow
-- face-recognition
-- template
+- spark
+- bigdl
+- mnist
 - kuberlab
 - kuberlabapptemplate
 Maintainers:
