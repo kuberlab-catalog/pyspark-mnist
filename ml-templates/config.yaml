@@ -18,7 +18,7 @@ spec:
       maxRestartCount: 0
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
-      command: "python bigdl-mnist-trian.py --master $SPARK-MASTER --executor-cores 4 --batch-size 20"
+      command: "python bigdl-mnist-trian.py --master $SPARK_MASTER --executor-cores 4 --batch-size 20"
       workdir: "$SRC_DIR"
       resources:
         accelerators:
