@@ -75,7 +75,7 @@ spec:
       maxRestartCount: 0
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
-      command: "python bigdl-inference-mnist.py --model-dir $TRAINING_DIR/1"
+      command: "python bigdl-inference-mnist.py --model-dir $TRAINING_DIR/1 --input $DATA_DIR/test"
       workdir: "$SRC_DIR"
       resources:
         accelerators:
