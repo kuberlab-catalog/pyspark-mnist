@@ -9,6 +9,7 @@ spec:
       - "{{ $value }}"
       {{- end }}
       manager: "pip2"
+  default_mount_path: "/notebooks"
   tasks:
   - name: train
     resources:
