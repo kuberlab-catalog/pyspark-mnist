@@ -5,7 +5,7 @@ storage:
    kind: cluster_storage
 
 dataset:
- value: mnist
+ value: mnist-images
  version: '1.0.0'
  workspace: 'kuberlab-demo'
  wizard:
